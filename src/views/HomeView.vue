@@ -3,39 +3,6 @@
     <el-button @click="initInsert">通过想法新增</el-button>
     <el-button @click="initInsertByName">通过书名新增</el-button>
   </div>
-  <div class="bookList" v-loading="bookListLoading">
-    <el-tabs type="border-card" class="bookTabs" v-model:model-value="activeTab">
-      <el-tab-pane label="公司发展史系列">
-        <CompanyHistory v-if="activeTab === '0'" @insertInit="insertInit" @toEditDetail="turnDetail" />
-      </el-tab-pane>
-      <el-tab-pane label="名人传记">
-        <PeopleHistory v-if="activeTab === '1'" @insertInit="insertInit" @toEditDetail="turnDetail" />
-      </el-tab-pane>
-      <el-tab-pane label="著名战争">著名战争</el-tab-pane>
-    </el-tabs>
-
-    <!-- <div class="book" @click="turnDetail(book.id)" v-for="book in bookList" :key="book.id">
-      <div class="info">
-        <div>{{ book.name }}</div>
-        <div v-if="book.type"><el-tag>{{typeList.find(v => v.id === book.type)?.name}}</el-tag></div>
-        <span v-if="book.status === 0"><el-tag type="warning">无正文</el-tag></span>
-        <span v-if="book.status === 2"><el-tag type="warning">待确认</el-tag></span>
-        <div>{{ book.problem }}</div>
-      </div>
-      <div class="imgContent">
-        <img class="img" v-if="book.img" :src="book.img + '?x-oss-process=image/resize,w_300,quality,q_60'" />
-      </div>
-      <div class="tools">
-        <el-button size="small" :type="book.img ? 'default' : 'primary'" @click.stop="editImgShow(book)">
-          {{ book.img ? '重新生成封皮' : '生成封皮' }}</el-button>
-        <div style="flex-grow: 1"></div>
-        <el-button size="small" type="warning" @click.stop="deleteBook(book)">
-          删除</el-button>
-      </div>
-    </div> -->
-  </div>
-  <!-- <el-pagination v-if="page > 0" class="page" @current-change="changePage" :current-page="page" :page-size="pageSize"
-    layout="total, prev, pager, next, jumper" :total="bookCount" /> -->
   <el-dialog v-model="insertVisible" @close="createClose" title="新增图书" width="80%">
     <el-form :model="form" v-if="createStep === 0">
       <el-form-item required label="写这本书的人的特点">
@@ -168,7 +135,7 @@
 </template>
 <script setup lang="ts">
 import { ref, reactive, onActivated } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElTabs, ElTabPane, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElRadioGroup, ElRadio, ElOption, ElIcon } from 'element-plus';
 import { get, post, put } from '@/plugins/request'
 import router from '@/router/index';
 import Session from '@/plugins/session';
@@ -199,9 +166,6 @@ type ICateType = 1 | 2;// 1树状结构，常用于知识。2线性结构，故�
 const activeTab = ref<string>('0');
 const page = ref<number>(1);
 const pageSize = ref<number>(10);
-const bookCount = ref<number>(-1)
-const bookListLoading = ref<boolean>(false)
-const bookList = ref<IBook[]>([])
 const insertVisible = ref<boolean>(false)
 const insertStrategy = ref<string>('');
 const form = reactive<{
@@ -283,7 +247,6 @@ onActivated(() => {
   // initBookList()
 })
 async function initBookList() {
-  bookListLoading.value = true;
   const { data: typeListRes } = await get(`/admin/dbBase/tableCommon/book/type`, {
     query: {},
     sort: {
@@ -299,37 +262,7 @@ async function initBookList() {
       name: v.name.val,
     }
   })
-  const { data, count } = await get(`/admin/dbBase/tableCommon/book/book`, {
-    query: {},
-    sort: {
-      id: 'desc',
-    },
-    page: {
-      page: page.value - 1,
-      pageSize: pageSize.value,
-    },
-  })
-  bookCount.value = count;
-  bookList.value = data.map((v: any) => {
-    return {
-      id: v.id.val,
-      name: v.name.val,
-      desc: v.desc.val,
-      problem: v.problem.val,
-      status: v.status.val,
-      createUserSystem: v.createUserSystem.val,
-      img: v.img.val,
-      type: v.type.val,
-    }
-  });
-  bookListLoading.value = false;
 }
-
-// function changePage(val: number) {
-//   console.log(val)
-//   page.value = val;
-//   initBookList();
-// }
 
 function turnDetail(id: number) {
   router.push('/book/editor/' + id)
@@ -784,54 +717,6 @@ async function insertInit(cateType: ICateType, type: number, system: string, boo
 }
 </script>
 <style lang="less" scoped>
-.bookList {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 12px;
-  height: calc(100vh - 64px);
-  overflow: auto;
-
-  .bookTabs {
-    width: 100%;
-  }
-
-  .book {
-    margin: 4px;
-    width: 200px;
-    height: 317px;
-    border: solid 1px #aaa;
-    border-radius: 8px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-
-    .imgContent {
-      min-height: 266px;
-      background-color: #c8c8c8;
-    }
-
-    .info {
-      position: absolute;
-      top: 0;
-      width: 100%;
-      background: rgba(255, 255, 255, .7);
-      padding: 8px;
-      box-sizing: border-box;
-    }
-
-    .img {
-      width: 100%;
-    }
-
-    .tools {
-      display: flex;
-      padding: 4px;
-    }
-  }
-}
-
 .page {
   width: 1050px;
   margin: 0 auto;

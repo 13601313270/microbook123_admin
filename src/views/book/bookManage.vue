@@ -170,7 +170,7 @@
 import { onMounted, ref, reactive, onActivated } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { get, post, put, Delete } from '@/plugins/request'
-import router from '@/router/router';
+import router from '@/router/index';
 import Session from '@/plugins/session';
 import CompanyHistory from './companyHistory.vue';
 import PeopleHistory from './peopleHistory.vue';
@@ -236,7 +236,9 @@ const formByName = reactive<{
   cateType: 1,// 1树状结构，常用于知识。2线性结构，故事/编年体
 })
 
-const allStyle = {
+const allStyle: {
+  [key: string]: string,
+} = {
   'Base': '通用风格',
   "3D Model": '3D模型',
   // 'Anime': '动漫', // 动漫分割的封皮，全是日本动漫那种东西

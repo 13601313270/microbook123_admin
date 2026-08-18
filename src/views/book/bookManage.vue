@@ -167,15 +167,13 @@
   </el-dialog>
 </template>
 <script setup lang="ts">
-import { ref, reactive, onActivated } from 'vue';
-import { ElMessage } from 'element-plus';
-import { get, post, put } from '@/plugins/request'
-import router from '@/router/index';
+import { onMounted, ref, reactive, onActivated } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { get, post, put, Delete } from '@/plugins/request'
+import router from '@/router/router';
 import Session from '@/plugins/session';
-import CompanyHistory from './book/companyHistory.vue';
-import PeopleHistory from './book/peopleHistory.vue';
-import json1 from '@/plugins/json1';
-import demo1 from '@/plugins/demo1';
+import CompanyHistory from './companyHistory.vue';
+import PeopleHistory from './peopleHistory.vue';
 
 type IBook = {
   id: number;
@@ -223,7 +221,7 @@ const createCateAnswerList = ref<string[]>([])
 const createCateJSONLoading = ref<boolean>(false)
 const createCateJSON = ref<CateItem[]>([])
 const creteLoading = ref<boolean>(false);
-// const createBookIng = ref<boolean>(false)
+const createBookIng = ref<boolean>(false)
 const createChatDom = ref()
 
 // 根据书名创建
@@ -321,12 +319,11 @@ async function initBookList() {
   });
   bookListLoading.value = false;
 }
-
-// function changePage(val: number) {
-//   console.log(val)
-//   page.value = val;
-//   initBookList();
-// }
+function changePage(val: number) {
+  console.log(val)
+  page.value = val;
+  initBookList();
+}
 
 function turnDetail(id: number) {
   router.push('/book/editor/' + id)
@@ -431,7 +428,56 @@ async function createCate() {
       return `根据你生成的目录章节，构建这个目录的json结构。
 ## 格式要求
 格式需要是json格式，只返回json数据即可，json格式示例如下：
-\`\`\`json${JSON.stringify(json1)}
+\`\`\`json${JSON.stringify([
+        {
+          "title": "第一部分名称",
+          "desc": "短描述",
+          "children": [
+            {
+              "title": "第一章名称",
+              "desc": "短描述",
+              "children": [
+                {
+                  "title": "三级类目1",
+                  "desc": "短描述",
+                },
+                {
+                  "title": "三级类目2",
+                  "desc": "短描述",
+                }
+              ]
+            },
+            {
+              "title": "第二章名称",
+              "desc": "短描述",
+            }
+          ]
+        },
+        {
+          "title": "第二部分名称",
+          "desc": "短描述",
+          "children": [
+            {
+              "title": "第三章名称",
+              "desc": "短描述",
+              "children": [
+                {
+                  "title": "三级类目1",
+                  "desc": "短描述",
+                },
+                {
+                  "title": "三级类目2",
+                  "desc": "短描述",
+                }
+              ]
+            },
+            {
+              "title": "第四章名称",
+              "desc": "短描述",
+            }
+          ]
+        }
+      ])}
 \`\`\`
 你生成的json，如上所示，不进行格式缩进，以去掉不必要的空格。每个children下至少有2个子节点。如果children下没有子节点，则不保留，不要出现\`\`\`"children": []\`\`\`这种空数组
 `
@@ -439,7 +485,48 @@ async function createCate() {
       return `好的，根据你生成的目录，构建成json结构。
 ## 格式要求
 格式需要是json格式，json格式示例如下：
-\`\`\`json${JSON.stringify(demo1)}
+\`\`\`json${JSON.stringify([
+        {
+          "title": "718年：隐居大匡山，往来旁郡。",
+          "desc": "短描述",
+        },
+        {
+          "title": "726年：自金陵至广陵。",
+          "desc": "短描述",
+        },
+        {
+          "title": "728年：春至江夏，改葬吴指南。送孟浩然之广陵。",
+          "desc": "短描述",
+        },
+        {
+          "title": "731年：下终南山。有《下终南山过斛斯山人宿置酒》诗。",
+          "desc": "短描述",
+        },
+        {
+          "title": "736年：春由太原经洛阳口安陆。",
+          "desc": "短描述",
+        },
+        {
+          "title": "738年：游襄阳，有《赠孟浩然》诗。",
+          "desc": "短描述",
+        },
+        {
+          "title": "740年：发生XXXX事情。",
+          "desc": "短描述",
+        },
+        {
+          "title": "741年：发生XXXX事情。",
+          "desc": "短描述",
+        },
+        {
+          "title": "742年：发生XXXX事情。",
+          "desc": "短描述",
+        },
+        {
+          "title": "743年：发生XXXX事情。",
+          "desc": "短描述",
+        },
+      ])}
 \`\`\`
 目录只有一层结构。数量和你刚才说的目录数量一致，title直接沿用目录名称。不要省略和合并内容，json可能很长，要完整展现出来。
 `
@@ -458,14 +545,16 @@ async function createCate() {
   })
   console.log(json)
 
-  const match = json.match(/```json([\S|\s]+)```/)
+  const match = json.match(/```json([\S|\s]+)\`\`\`/)
   if (match) {
     try {
       let children: CateItem[] = []
       try {
         children = JSON.parse(match[1]);
       } catch (e) {
+        debugger
         children = eval(`(${match[1]})`)
+        debugger
       }
       console.log('children', children);
       if (children.length === 1 && children[0].children) {
@@ -495,7 +584,7 @@ async function createBook() {
 }
 \`\`\``)
   console.log(bookInfoJSON)
-  const match = bookInfoJSON.match(/```json([\S|\s]+)```/)
+  const match = bookInfoJSON.match(/```json([\S|\s]+)\`\`\`/)
   if (match) {
     try {
       const bookInfo: {
@@ -614,7 +703,7 @@ json结构，json里不要加任何注释。json里的backgroundColor的值后�
 
   console.log('=====', jsonText)
   if (jsonText) {
-    const match = jsonText.match(/```json([\S|\s]+)```/)
+    const match = jsonText.match(/```json([\S|\s]+)\`\`\`/)
     console.log('=====', match)
     if (match) {
       try {
@@ -670,13 +759,15 @@ async function chatCreateImgStep2() {
   }, {
     model: 'ernie-3.5-128k'
   })
-  const match2 = prompt.match(/```json([\S|\s]+)```/)
+  const match2 = prompt.match(/```json([\S|\s]+)\`\`\`/)
   if (match2) {
     let json2
     try {
       json2 = JSON.parse(match2[1])
     } catch (e) {
+      debugger
       json2 = eval(`(${match2[1]})`)
+      debugger
     }
     createImgStep2AnswerJSON.value = json2;
     createImging.value = false
@@ -705,12 +796,12 @@ async function saveCreateImg() {
     return;
   }
   const base64ToBlob = (dataurl: string) => {
-    const arr = dataurl.split(',')
+    let arr = dataurl.split(',')
     // @ts-ignore
-    const mime = arr[0].match(/:(.*?);/)[1]
-    const bstr = atob(arr[1])
+    let mime = arr[0].match(/:(.*?);/)[1]
+    let bstr = atob(arr[1])
     let n = bstr.length
-    const u8arr = new Uint8Array(n)
+    let u8arr = new Uint8Array(n)
     while (n--) {
       u8arr[n] = bstr.charCodeAt(n)
     }
@@ -730,18 +821,17 @@ async function saveCreateImg() {
     initBookList()
   }
 }
-// function deleteBook(book: IBook) {
-//   ElMessageBox.confirm('是否删除' + book.id + ':' + book.name, {
-//     confirmButtonText: '确定',
-//     cancelButtonText: '取消',
-//     type: 'warning',
-//   }).then(async () => {
-//     await Delete(`/admin/dbBase/tableCommonDetail/book/book/${book.id}`)
-//     initBookList()
-//   }).catch(() => {
-//     // 用户取消删除
-//   })
-// }
+function deleteBook(book: IBook) {
+  ElMessageBox.confirm('是否删除' + book.id + ':' + book.name, {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(async () => {
+    await Delete(`/admin/dbBase/tableCommonDetail/book/book/${book.id}`)
+    initBookList()
+  }).catch(() => {
+  })
+}
 function createClose() {
   createStep.value = 0
   createCateQuestion.value = ''
@@ -762,9 +852,9 @@ ${typeList.value.map(v => v.name).join('、')}。
 \`\`\`
 `)
   console.log(result)
-  const match = result.match(/```json([\S|\s]+)```/)
+  const match = result.match(/```json([\S|\s]+)\`\`\`/)
   console.log(match)
-  let jsonObj: {
+  var jsonObj: {
     type: string
   };
   if (match) {
@@ -810,6 +900,12 @@ async function insertInit(cateType: ICateType, type: number, system: string, boo
 }
 </script>
 <style lang="less" scoped>
+@import "../basic.less";
+
+.nav {
+  .navTools;
+}
+
 .bookList {
   display: flex;
   flex-wrap: wrap;

@@ -1,15 +1,7 @@
 // eslint-disable-next-line
 // @ts-ignore
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-
-const routes: Array<RouteRecordRaw> = [
-  {
-    path: '/',
-    name: 'home',
-    component: HomeView
-  },
-]
+import { createRouter, createWebHistory } from 'vue-router'
+import routes from './config'
 
 const router = createRouter({
   history: createWebHistory(),

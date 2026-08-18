@@ -211,7 +211,7 @@ import jsPDF from 'jspdf';
 
 import Session from '@/plugins/session';
 import { useRoute } from 'vue-router';
-import router from '@/router/router'
+import router from '@/router/index'
 import { get, post, put, Delete } from '@/plugins/request'
 import modifyStr from './modifyStr';
 import { costConfig, ModelEnum } from '@/plugins/wenxinyiyanConfig';
@@ -910,7 +910,7 @@ async function exportBook(isUpload: boolean) {
         for (let j = 0; j < strArr.length; j++) {
           const strs_ = strArr[j]
           doc.setFont('sans')
-          const wordList = modifyStr(doc, strs_);
+          const wordList = modifyStr(strs_);
           let lineXPosition = x + marginLeft;
           // console.log('===wordList===', wordList);
           let maxFontSize = 10;

@@ -1,5 +1,26 @@
 import axios from "axios";
 
+function getCookie(name: string) {
+  const strCookie = window.document.cookie;// 获取cookie字符串
+  const arrCookie = strCookie.split('; ');// 分割
+  for (let i = 0; i < arrCookie.length; i++) {
+    const arr = arrCookie[i].split('=');
+    if (arr[0] === name) {
+      return arr[1];
+    }
+  }
+  return '';
+}
+
+axios.interceptors.request.use(config => {
+  if (!config.url?.includes('restapi.amap.com')) {
+    config.headers.token = getCookie('adminToken');
+  }
+  return config;
+}, error => Promise.reject(error));
+
+axios.defaults.baseURL = '//api.studying1v1.com';
+
 export function get(method: string, params?: any): Promise<any> {
   return axios.get(method, {
     params: params,

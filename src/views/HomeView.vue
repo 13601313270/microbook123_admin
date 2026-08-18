@@ -176,6 +176,7 @@ import CompanyHistory from './book/companyHistory.vue';
 import PeopleHistory from './book/peopleHistory.vue';
 import json1 from '@/plugins/json1';
 import demo1 from '@/plugins/demo1';
+import cateDemo from '@/plugins/cateDemo';
 
 type IBook = {
   id: number;
@@ -238,7 +239,9 @@ const formByName = reactive<{
   cateType: 1,// 1树状结构，常用于知识。2线性结构，故事/编年体
 })
 
-const allStyle = {
+const allStyle: {
+  [key: string]: string,
+} = {
   'Base': '通用风格',
   "3D Model": '3D模型',
   // 'Anime': '动漫', // 动漫分割的封皮，全是日本动漫那种东西
@@ -348,36 +351,7 @@ async function begin() {
     [key in ICateType]: string
   } = {
     [1]: `你要考虑这本书都需要讲解什么内容。简短告诉我`,
-    [2]: `你要考虑这本书都需要讲解什么内容，并生成本书的目录，目录类似小说，编年体，或人物传记，具体哪年干了什么事情，然后给我你规划的本书的目录。目录就一层结构。
-## 生成目录格式要求
-一行一个时间发生的时间，年份在前，发生的事情在后。中间用“：”隔开。注意：即时年份非常多，也不要划分成一个个时期。就罗列出来就好。
-
-## 目录示例：
-718年：隐居大匡山，往来旁郡。
-726年：自金陵至广陵。
-728年：春至江夏，改葬吴指南。送孟浩然之广陵。
-731年：下终南山。有《下终南山过斛斯山人宿置酒》诗。
-736年：春由太原经洛阳口安陆。
-738年：游襄阳，有《赠孟浩然》诗。
-740年：发生XXXX事情。
-741年：发生XXXX事情。
-742年：发生XXXX事情。
-743年：发生XXXX事情。
-
-## 反面示例
-第一章：某某时期
-718年：隐居大匡山，往来旁郡。从赵蕤学纵横术
-726年：自金陵至广陵，又东南游苏州、杭州、越州、台州，东涉溟海。
-728年：春至江夏，改葬吴指南。送孟浩然之广陵。回安陆，寓居白兆山。
-731年：下终南山。有《下终南山过斛斯山人宿置酒》诗。
-736年：春由太原经洛阳口安陆。
-第二章：某某时期
-738年：游襄阳，有《赠孟浩然》诗。
-740年：发生XXXX事情。
-741年：发生XXXX事情。
-742年：发生XXXX事情。
-743年：发生XXXX事情。
-`,
+    [2]: cateDemo,
   }
   createCateAnswerList.value.push('');
   // 你可以参考这个网址中[${form.outUrl}]中外部资料作为常识。

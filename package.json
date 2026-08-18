@@ -12,11 +12,13 @@
     "calc-number": "^0.2.4",
     "core-js": "^3.8.3",
     "element-plus": "^2.14.4",
+    "jspdf": "^4.2.1",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3",
     "vuex": "^4.0.0"
   },
   "devDependencies": {
+    "@types/vue-router": "^2.0.0",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
     "@vue/cli-plugin-babel": "~5.0.0",

@@ -1,9 +1,7 @@
-import jsPDF from "jspdf";
-
 const en = /^[A-Za-z]$/
 const imgMatch = /^!\[.*\]\((.*)\)/
 
-export default function (doc: jsPDF, str: string): Array<{
+export default function (str: string): Array<{
   word: string;
   style: any[]
 }> {

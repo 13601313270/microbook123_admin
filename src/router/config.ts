@@ -1,3 +1,4 @@
+// @ts-ignore
 import { RouteRecordRaw } from "vue-router";
 import HomeView from '../views/HomeView.vue'
 

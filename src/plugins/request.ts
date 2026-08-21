@@ -13,13 +13,13 @@ function getCookie(name: string) {
 }
 
 axios.interceptors.request.use(config => {
-  if (!config.url?.includes('restapi.amap.com')) {
-    config.headers.token = getCookie('adminToken');
-  }
+  // if (!config.url?.includes('restapi.amap.com')) {
+  // }
+  config.headers.token = localStorage.getItem('token') || getCookie('adminToken');
   return config;
 }, error => Promise.reject(error));
 
-axios.defaults.baseURL = '//api.studying1v1.com';
+axios.defaults.baseURL = 'https://www.microbook123.com/';
 
 export function get(method: string, params?: any): Promise<any> {
   return axios.get(method, {

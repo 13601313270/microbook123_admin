@@ -22,9 +22,8 @@
         </el-radio-group>
       </el-form-item>
       <el-form-item required label="分类">
-        <el-button :disabled="form.system == '' || form.bookProblem === ''" @click="getRecType"
-          :loading="typeAIRecloading">AI判断</el-button>
-        <el-select :disabled="form.system == '' || form.bookProblem === ''" v-model="form.type">
+        <el-select placeholder="请选择专栏所属的分类" :disabled="form.system == '' || form.bookProblem === ''"
+          v-model="form.type">
           <el-option v-for="item in typeList" :key="item.id" :label="item.name" :value="item.id">
           </el-option>
         </el-select>
@@ -134,7 +133,7 @@
   </el-dialog>
 </template>
 <script setup lang="ts">
-import { ref, reactive, onActivated } from 'vue';
+import { ref, reactive, onActivated, onMounted } from 'vue';
 import { ElMessage, ElTabs, ElTabPane, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElRadioGroup, ElRadio, ElOption, ElIcon } from 'element-plus';
 import { get, post, put } from '@/plugins/request'
 import router from '@/router/index';
@@ -243,23 +242,22 @@ const twoChatContnt = ref<{
   content: string,
 }[]>([])
 
-onActivated(() => {
-  // initBookList()
+onMounted(() => {
+  const match = location.hash.match(/#token=(.*)/);
+  if (match) {
+    const token = match[1]
+    localStorage.setItem('token', token)
+    location.hash = '';
+  }
+  initBookList()
 })
 async function initBookList() {
-  const { data: typeListRes } = await get(`/admin/dbBase/tableCommon/book/type`, {
-    query: {},
-    sort: {
-    },
-    page: {
-      page: 0,
-      pageSize: 100,
-    },
-  });
+  const { data: typeListRes } = await get('/bookType');
+  console.log('typeListRes', typeListRes)
   typeList.value = typeListRes.map((v: any) => {
     return {
-      id: v.id.val,
-      name: v.name.val,
+      id: v.id,
+      name: v.name,
     }
   })
 }
@@ -656,41 +654,6 @@ function createClose() {
   createCateJSON.value = []
 }
 
-async function getRecType() {
-  const session = new Session(form.system)
-  typeAIRecloading.value = true;
-  const result = await session.chat(`现在有一个人${form.system}写一本${form.bookProblem}。你希望收录到哪个分类？分类有：
-${typeList.value.map(v => v.name).join('、')}。
-按照json格式返回。
-\`\`\`json
-{
-  "type": "最适合分类名"
-}
-\`\`\`
-`)
-  console.log(result)
-  const match = result.match(/```json([\S|\s]+)```/)
-  console.log(match)
-  let jsonObj: {
-    type: string
-  };
-  if (match) {
-    try {
-      jsonObj = JSON.parse(match[1]);
-    } catch (e) {
-      jsonObj = eval('(' + match[1] + ')')
-    }
-    console.log(jsonObj)
-    if (jsonObj.type) {
-      const find = typeList.value.find(v => v.name === jsonObj.type)
-      console.log(find)
-      if (find) {
-        form.type = find.id;
-      }
-    }
-  }
-  typeAIRecloading.value = false;
-}
 async function insertInit(cateType: ICateType, type: number, system: string, bookProblem: string, message: string, strategy: string) {
   console.log('insertInit', cateType, system, message, strategy)
   form.system = system;

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { ElMessage } from "element-plus";
 
 function getCookie(name: string) {
   const strCookie = window.document.cookie;// 获取cookie字符串
@@ -18,6 +19,21 @@ axios.interceptors.request.use(config => {
   config.headers.token = localStorage.getItem('token') || getCookie('adminToken');
   return config;
 }, error => Promise.reject(error));
+
+axios.interceptors.response.use(response => {
+  return response.data
+}, (error: any) => {
+  if (error.status === 404) {
+    ElMessage('接口不存在');
+  } else if ([401, 403].includes(error.status)) {
+    ElMessage('未登陆');
+    // if (location.pathname !== loginPathName) {
+    //   Confirm()
+    // }
+  }
+  return Promise.reject(error);
+});
+
 
 axios.defaults.baseURL = 'https://www.microbook123.com/';
 

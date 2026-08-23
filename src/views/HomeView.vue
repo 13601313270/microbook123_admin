@@ -3,6 +3,25 @@
     <el-button @click="initInsert">通过想法新增</el-button>
     <el-button @click="initInsertByName">通过书名新增</el-button>
   </div>
+  <div class="book" @click="turnDetail(book.id)" v-for="book in bookList" :key="book.id">
+    <div class="info">
+      <div>{{ book.name }}</div>
+      <div v-if="book.type"><el-tag>{{typeList.find(v => v.id === book.type)?.name}}</el-tag></div>
+      <span v-if="book.status === 0"><el-tag type="warning">无正文</el-tag></span>
+      <span v-if="book.status === 2"><el-tag type="warning">待确认</el-tag></span>
+      <div>{{ book.problem }}</div>
+    </div>
+    <div class="imgContent">
+      <img class="img" v-if="book.img" :src="book.img + '?x-oss-process=image/resize,w_300,quality,q_60'" />
+    </div>
+    <div class="tools">
+      <el-button size="small" :type="book.img ? 'default' : 'primary'" @click.stop="editImgShow(book)">
+        {{ book.img ? '重新生成封皮' : '生成封皮' }}</el-button>
+      <div style="flex-grow: 1"></div>
+      <el-button size="small" type="warning" @click.stop="deleteBook(book)">
+        删除</el-button>
+    </div>
+  </div>
   <el-dialog v-model="insertVisible" @close="createClose" title="新增图书" width="80%">
     <el-form :model="form" v-if="createStep === 0">
       <el-form-item required label="写这本书的人的特点">
@@ -134,8 +153,8 @@
 </template>
 <script setup lang="ts">
 import { ref, reactive, onActivated, onMounted } from 'vue';
-import { ElMessage, ElTabs, ElTabPane, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElRadioGroup, ElRadio, ElOption, ElIcon } from 'element-plus';
-import { get, post, put } from '@/plugins/request'
+import { ElMessage, ElTabs, ElTabPane, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElRadioGroup, ElRadio, ElOption, ElIcon, ElMessageBox } from 'element-plus';
+import { Delete, get, post, put } from '@/plugins/request'
 import router from '@/router/index';
 import Session from '@/plugins/session';
 import CompanyHistory from './book/companyHistory.vue';
@@ -233,6 +252,9 @@ const typeList = ref<Array<{
   id: number,
   name: string,
 }>>([])
+const bookCount = ref<number>(-1)
+const bookList = ref<IBook[]>([])
+const bookListLoading = ref<boolean>(false)
 const typeAIRecloading = ref<boolean>(false)
 
 // 对抗网络
@@ -252,7 +274,7 @@ onMounted(() => {
   initBookList()
 })
 async function initBookList() {
-  const { data: typeListRes } = await get('/bookType');
+  const typeListRes = await get('/bookType');
   console.log('typeListRes', typeListRes)
   typeList.value = typeListRes.map((v: any) => {
     return {
@@ -260,6 +282,22 @@ async function initBookList() {
       name: v.name,
     }
   })
+
+  const { data, count } = await get(`/bookList`)
+  bookCount.value = count;
+  bookList.value = data.map((v: any) => {
+    return {
+      id: v.id,
+      name: v.name,
+      desc: v.desc,
+      problem: v.problem,
+      status: v.status,
+      createUserSystem: v.createUserSystem,
+      img: v.img,
+      type: v.type,
+    }
+  });
+  bookListLoading.value = false;
 }
 
 function turnDetail(id: number) {
@@ -359,32 +397,24 @@ async function createCate() {
     json += res;
   }, {
     isGiveup: true,
-    model: 'ernie-3.5-128k'
+    isJSON: true,
   })
   console.log(json)
-
-  const match = json.match(/```json([\S|\s]+)```/)
-  if (match) {
+  try {
+    let children: CateItem[] = []
     try {
-      let children: CateItem[] = []
-      try {
-        children = JSON.parse(match[1]);
-      } catch (e) {
-        children = eval(`(${match[1]})`)
-      }
-      console.log('children', children);
-      if (children.length === 1 && children[0].children) {
-        children = children[0].children;
-      }
-      console.log(children);
-      createCateJSON.value = children;
+      children = JSON.parse(json);
     } catch (e) {
-      console.log(match);
-      ElMessage.error('json结构不严格');
+      children = eval(`(${json})`)
     }
-  } else {
-    console.log(json);
-    ElMessage.error('大语言模型无法找到json结构');
+    console.log('children', children);
+    if (children.length === 1 && children[0].children) {
+      children = children[0].children;
+    }
+    console.log(children);
+    createCateJSON.value = children;
+  } catch (e) {
+    ElMessage.error('json结构不严格');
   }
   createCateJSONLoading.value = false;
 }
@@ -422,16 +452,14 @@ async function createBook() {
         strategy: insertStrategy.value, // 策略
       };
       console.log(insertInfo);
-      const res = await post(`/admin/dbBase/tableCommon/book/book`, {
-        data: insertInfo
-      });
+      const res = await post(`/createBook`, insertInfo);
       console.log('创建成功', res);
       if (res) {
         insertVisible.value = false;
         ElMessage.success('创建成功')
         await initBookList();
         console.log('创建成功2')
-        const insertInfo: any = await get(`/admin/dbBase/tableCommonDetail/book/book/${res}`)
+        const insertInfo = await get(`/bookInfo/${res}`)
         console.log('创建成功3', insertInfo)
         if (insertInfo) {
           console.log('创建成功4', insertInfo)
@@ -488,10 +516,9 @@ async function chatCreateImg() {
   createImgStep2AnswerJSON.value = undefined
   createImgStep1Answer.value = await sessionImg.chat(prompy, (res) => {
     createImgStep1Answer.value += res;
-  }, {
-    model: 'ernie-3.5-128k'
   })
-
+  console.log('createImgStep1Answer.value', createImgStep1Answer.value)
+  alert(1)
   const jsonText = await sessionImg.chat(`
 根据刚才的信息，给我汇总一个json格式的数据，json里不要加任何注释。
 ## 格式要求
@@ -513,14 +540,32 @@ json结构，json里不要加任何注释。json里的backgroundColor的值后�
 \`\`\`
 `, (res) => {
     createImgStep1Answer.value += res
-  }, {
-    model: 'ernie-3.5-128k'
   })
 
   console.log('=====', jsonText)
   if (jsonText) {
     const match = jsonText.match(/```json([\S|\s]+)```/)
     console.log('=====', match)
+    function step(json: {
+      object: string[],
+      backgroundColor: string[],
+      style: (typeof allStyle)[keyof typeof allStyle],
+    }) {
+      console.log('=====,3', json)
+      const enumIndex = Object.values(allStyle).indexOf(json.style)
+      const style: keyof typeof allStyle = Object.keys(allStyle)[enumIndex] as keyof typeof allStyle;
+      if (style === undefined) {
+        ElMessage.error('style不存在');
+        return;
+      } else {
+        createImgStep1StyleSelect.value = style;
+      }
+      createImgStep1Colors.value = json.backgroundColor;
+      createImgStep1ColorsSelect.value = createImgStep1Colors.value[0]
+      createImgStep1ObjectSelect.value = json.object;
+      createImging.value = false;
+      chatCreateImgStep2()
+    }
     if (match) {
       try {
         const json: {
@@ -528,22 +573,22 @@ json结构，json里不要加任何注释。json里的backgroundColor的值后�
           backgroundColor: string[],
           style: (typeof allStyle)[keyof typeof allStyle],
         } = JSON.parse(match[1]);
-        const enumIndex = Object.values(allStyle).indexOf(json.style)
-        const style: keyof typeof allStyle = Object.keys(allStyle)[enumIndex] as keyof typeof allStyle;
-        if (style === undefined) {
-          ElMessage.error('style不存在');
-          return;
-        } else {
-          createImgStep1StyleSelect.value = style;
-        }
-        createImgStep1Colors.value = json.backgroundColor;
-        createImgStep1ColorsSelect.value = createImgStep1Colors.value[0]
-        createImgStep1ObjectSelect.value = json.object;
-        createImging.value = false;
-        chatCreateImgStep2()
+        step(json)
       } catch (e) {
         createImging.value = false;
         ElMessage.error('json结构不对')
+      }
+    } else {
+      console.log('=====,1', jsonText)
+      try {
+        const json: {
+          object: string[],
+          backgroundColor: string[],
+          style: (typeof allStyle)[keyof typeof allStyle],
+        } = JSON.parse(jsonText);
+        console.log('=====,2', json)
+        step(json)
+      } catch (e) {
       }
     }
   }
@@ -594,11 +639,11 @@ async function chatCreateImgStep3() {
   }
   createImging.value = true
   const selectStyle: keyof typeof allStyle = createImgStep1StyleSelect.value;
-  get('https://api.studying1v1.com/wenxinyiyan/createImg', {
+  post('/createBookImg', {
     prompt: createImgStep2AnswerJSON.value.prompt,
-    size: '768x1024',
     style: selectStyle
   }).then(res => {
+    console.log('createBookImg', res)
     createImgUrl.value = "data:image/png;base64," + res.data[0].b64_image;
     // charGPTStrLoading.value[sentUserId] = false;
   }).finally(() => {
@@ -624,29 +669,30 @@ async function saveCreateImg() {
 
   const formData = new FormData()
   formData.append('file', base64ToBlob(createImgUrl.value))
-  const { url } = await post('/oss', formData)
+  const data = await post('/oss', formData)
+  console.log('ddddd', data)
+  const { result, url } = data;
   if (url) {
+    console.log('ddddd-2', data)
     editImgIsShow.value = false;
-    await put(`/admin/dbBase/tableCommonDetail/book/book/${createImgBook.value.id}`, {
-      data: {
-        img: url,
-      },
+    await put(`/setBookImg/${createImgBook.value.id}`, {
+      img: url,
     })
     initBookList()
   }
 }
-// function deleteBook(book: IBook) {
-//   ElMessageBox.confirm('是否删除' + book.id + ':' + book.name, {
-//     confirmButtonText: '确定',
-//     cancelButtonText: '取消',
-//     type: 'warning',
-//   }).then(async () => {
-//     await Delete(`/admin/dbBase/tableCommonDetail/book/book/${book.id}`)
-//     initBookList()
-//   }).catch(() => {
-//     // 用户取消删除
-//   })
-// }
+function deleteBook(book: IBook) {
+  ElMessageBox.confirm('是否删除' + book.id + ':' + book.name, {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(async () => {
+    await Delete(`/admin/dbBase/tableCommonDetail/book/book/${book.id}`)
+    initBookList()
+  }).catch(() => {
+    // 用户取消删除
+  })
+}
 function createClose() {
   createStep.value = 0
   createCateQuestion.value = ''

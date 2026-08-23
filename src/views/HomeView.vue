@@ -421,66 +421,63 @@ async function createCate() {
 async function createBook() {
   creteLoading.value = true;
   const bookInfoJSON = await session.chat(`给这个书起个15个字以内的吸引人的名字，然后总结一段30字以内的短描述，短描述适合印刷在封皮上
-  ## 格式要求
-返回json结构，只返回json，不要跟我说客套话，示例如下：
+  ## json格式说明
 \`\`\`json
 {
   "name": "书名",
   "desc": "短描述",
 }
-\`\`\``)
+\`\`\``, () => { }, {
+    isJSON: true,
+    isSessionEnd: true,
+  })
   console.log(bookInfoJSON)
-  const match = bookInfoJSON.match(/```json([\S|\s]+)```/)
-  if (match) {
-    try {
-      const bookInfo: {
-        name: string,
-        desc: string,
-      } = JSON.parse(match[1]);
-      console.log(bookInfo)
-      const insertInfo = {
-        name: bookInfo.name, // 名字
-        createUserSystem: form.system, // 创建者能力描述
-        problem: form.bookProblem, // 帮助读者解决的问题
-        desc: bookInfo.desc, // 副标题描述
-        cateIsExamine: false, // 类目是否人工审核过完成初始化
-        img: '', // 封皮
-        cateJSON: JSON.stringify(createCateJSON.value), // 类目
-        cateType: form.cateType,
-        status: 0,
-        type: form.type,
-        strategy: insertStrategy.value, // 策略
-      };
-      console.log(insertInfo);
-      const res = await post(`/createBook`, insertInfo);
-      console.log('创建成功', res);
-      if (res) {
-        insertVisible.value = false;
-        ElMessage.success('创建成功')
-        await initBookList();
-        console.log('创建成功2')
-        const insertInfo = await get(`/bookInfo/${res}`)
-        console.log('创建成功3', insertInfo)
-        if (insertInfo) {
-          console.log('创建成功4', insertInfo)
-          editImgShow({
-            id: insertInfo.id,
-            name: insertInfo.name,
-            desc: insertInfo.desc,
-            problem: insertInfo.problem,
-            createUserSystem: insertInfo.createUserSystem,
-            img: insertInfo.img,
-            status: insertInfo.status,
-            type: insertInfo.type,
-          })
-        }
+  try {
+    const bookInfo: {
+      name: string,
+      desc: string,
+    } = JSON.parse(bookInfoJSON);
+    console.log(bookInfo)
+    const insertInfo = {
+      name: bookInfo.name, // 名字
+      createUserSystem: form.system, // 创建者能力描述
+      problem: form.bookProblem, // 帮助读者解决的问题
+      desc: bookInfo.desc, // 副标题描述
+      cateIsExamine: false, // 类目是否人工审核过完成初始化
+      img: '', // 封皮
+      cateJSON: JSON.stringify(createCateJSON.value), // 类目
+      cateType: form.cateType,
+      status: 0,
+      type: form.type,
+      strategy: insertStrategy.value, // 策略
+    };
+    console.log(insertInfo);
+    const res = await post(`/createBook`, insertInfo);
+    console.log('创建成功', res);
+    if (res) {
+      insertVisible.value = false;
+      ElMessage.success('创建成功')
+      await initBookList();
+      console.log('创建成功2')
+      const insertInfo = await get(`/bookInfo/${res}`)
+      console.log('创建成功3', insertInfo)
+      if (insertInfo) {
+        console.log('创建成功4', insertInfo)
+        editImgShow({
+          id: insertInfo.id,
+          name: insertInfo.name,
+          desc: insertInfo.desc,
+          problem: insertInfo.problem,
+          createUserSystem: insertInfo.createUserSystem,
+          img: insertInfo.img,
+          status: insertInfo.status,
+          type: insertInfo.type,
+        })
       }
-    } catch (e: any) {
-      console.error(e);
-      ElMessage.error(e)
     }
-  } else {
-    ElMessage.error('返回无json结构')
+  } catch (e: any) {
+    console.error(e);
+    ElMessage.error(e)
   }
   creteLoading.value = false;
 }
@@ -518,11 +515,9 @@ async function chatCreateImg() {
     createImgStep1Answer.value += res;
   })
   console.log('createImgStep1Answer.value', createImgStep1Answer.value)
-  alert(1)
   const jsonText = await sessionImg.chat(`
-根据刚才的信息，给我汇总一个json格式的数据，json里不要加任何注释。
+根据刚才的信息，给我汇总一个json格式的数据。
 ## 格式要求
-json结构，json里不要加任何注释。json里的backgroundColor的值后面，不要给任何注释。
 \`\`\`json
 {
   "object": ["元素1","元素2","元素3"],
@@ -540,17 +535,18 @@ json结构，json里不要加任何注释。json里的backgroundColor的值后�
 \`\`\`
 `, (res) => {
     createImgStep1Answer.value += res
+  }, {
+    isJSON: true,
   })
 
   console.log('=====', jsonText)
   if (jsonText) {
-    const match = jsonText.match(/```json([\S|\s]+)```/)
-    console.log('=====', match)
-    function step(json: {
-      object: string[],
-      backgroundColor: string[],
-      style: (typeof allStyle)[keyof typeof allStyle],
-    }) {
+    try {
+      const json: {
+        object: string[],
+        backgroundColor: string[],
+        style: (typeof allStyle)[keyof typeof allStyle],
+      } = JSON.parse(jsonText);
       console.log('=====,3', json)
       const enumIndex = Object.values(allStyle).indexOf(json.style)
       const style: keyof typeof allStyle = Object.keys(allStyle)[enumIndex] as keyof typeof allStyle;
@@ -565,31 +561,9 @@ json结构，json里不要加任何注释。json里的backgroundColor的值后�
       createImgStep1ObjectSelect.value = json.object;
       createImging.value = false;
       chatCreateImgStep2()
-    }
-    if (match) {
-      try {
-        const json: {
-          object: string[],
-          backgroundColor: string[],
-          style: (typeof allStyle)[keyof typeof allStyle],
-        } = JSON.parse(match[1]);
-        step(json)
-      } catch (e) {
-        createImging.value = false;
-        ElMessage.error('json结构不对')
-      }
-    } else {
-      console.log('=====,1', jsonText)
-      try {
-        const json: {
-          object: string[],
-          backgroundColor: string[],
-          style: (typeof allStyle)[keyof typeof allStyle],
-        } = JSON.parse(jsonText);
-        console.log('=====,2', json)
-        step(json)
-      } catch (e) {
-      }
+    } catch (e) {
+      createImging.value = false;
+      ElMessage.error('json结构不对')
     }
   }
 }
@@ -602,12 +576,12 @@ async function chatCreateImgStep2() {
   const mainColor: string = createImgStep1ColorsSelect.value;
   const objects: string[] = createImgStep1ObjectSelect.value;
   createImgStep2Answer.value = '';
-  const prompt = await sessionImg.chat(`帮助我写一个文生图模型的Prompt，生成的图片作为图书的封皮使用，。
+  const prompt = await sessionImg.chat(`帮助我写一个中文的文生图模型的Prompt。
 ## 要求如下
 背景主色调接近十六进制颜色代码“${mainColor}”。
 让图片上半部分有大面积纯色留白，比如添加蓝色的天空，白色的黑板，纯色的墙面，大片雪地。
 包含元素${objects.join('、')}中的一个或多个，元素尽可能在图片下半部分。
-这个图片，作为图书的封皮使用，简约一些，图片不要太乱。
+简约一些，图片不要太乱。
 给我一个符合这个表述的文生图Prompt。
 ## 格式如下
 \`\`\`json
@@ -618,20 +592,18 @@ async function chatCreateImgStep2() {
 `, (res) => {
     createImgStep2Answer.value += res
   }, {
-    model: 'ernie-3.5-128k'
+    isJSON: true,
+    isSessionEnd: true,
   })
-  const match2 = prompt.match(/```json([\S|\s]+)```/)
-  if (match2) {
-    let json2
-    try {
-      json2 = JSON.parse(match2[1])
-    } catch (e) {
-      json2 = eval(`(${match2[1]})`)
-    }
-    createImgStep2AnswerJSON.value = json2;
-    createImging.value = false
-    chatCreateImgStep3()
+  let json2
+  try {
+    json2 = JSON.parse(prompt)
+  } catch (e) {
+    json2 = eval(`(${prompt})`)
   }
+  createImgStep2AnswerJSON.value = json2;
+  createImging.value = false
+  chatCreateImgStep3()
 }
 async function chatCreateImgStep3() {
   if (createImgStep1StyleSelect.value === undefined || createImgStep2AnswerJSON.value === undefined) {

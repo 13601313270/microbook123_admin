@@ -26,9 +26,10 @@ class Session {
   chat(
     message: string,
     step?: (val: string) => void,
-    { isGiveup, isJSON }: {
+    { isGiveup, isJSON, isSessionEnd }: {
       isGiveup?: boolean,
       isJSON?: boolean,
+      isSessionEnd?: boolean,
     } = { isGiveup: false }
   ): Promise<string> {
     return new Promise<string>(resolve => {
@@ -40,6 +41,7 @@ class Session {
           isGiveup: !!isGiveup,
           isJSON: !!isJSON,
           stream: false,// post不支持EventSource
+          isSessionEnd: !!isSessionEnd,
         }).then((res) => {
           console.log('ddddddd', res)
           resolve(res.choices[0].message.content);
@@ -48,7 +50,7 @@ class Session {
       }
       let returnStr = ''
       const token = localStorage.getItem('token');
-      const eventSource = new EventSource(`https://www.microbook123.com/chat/sync?session=${this.sessionId}&token=${token}&message=${encodeURIComponent(message)}&system=${encodeURIComponent(this.system)}&isGiveup=${!!isGiveup}&isJSON=${!!isJSON}`);
+      const eventSource = new EventSource(`https://www.microbook123.com/chat/sync?session=${this.sessionId}&token=${token}&message=${encodeURIComponent(message)}&system=${encodeURIComponent(this.system)}&isGiveup=${!!isGiveup}&isJSON=${!!isJSON}&isSessionEnd=${!!isSessionEnd}`);
       eventSource.onopen = function () {
         returnStr = ''
         console.log('连接已打开');

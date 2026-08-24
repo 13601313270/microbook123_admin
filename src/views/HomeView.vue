@@ -157,7 +157,7 @@
   </el-dialog>
 </template>
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, nextTick } from 'vue';
 import { ElMessage, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElRadioGroup, ElRadio, ElOption, ElIcon, ElMessageBox } from 'element-plus';
 import { Delete, get, post, put } from '@/plugins/request'
 import router from '@/router/index';
@@ -256,10 +256,17 @@ const twoChatContnt = ref<{
 }[]>([])
 
 onMounted(() => {
-  const match = location.hash.match(/#token=(.*)/);
+  const match = location.hash.match(/#token=([^&]*)/);
   if (match) {
     const token = match[1]
     localStorage.setItem('token', token)
+    const initText = location.hash.match(/&initText=([^&]*)/);
+    if (initText) {
+      nextTick(() => {
+        initInsert()
+        form.bookProblem = decodeURIComponent(initText[1])
+      })
+    }
     location.hash = '';
   }
   initBookList()

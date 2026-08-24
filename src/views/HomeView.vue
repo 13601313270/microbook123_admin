@@ -1,28 +1,29 @@
 <template>
   <div class="nav">
     <el-button @click="initInsert">通过想法新增</el-button>
-    <el-button @click="initInsertByName">通过书名新增</el-button>
   </div>
-  <div class="book" @click="turnDetail(book.id)" v-for="book in bookList" :key="book.id">
-    <div class="info">
-      <div>{{ book.name }}</div>
-      <div v-if="book.type"><el-tag>{{typeList.find(v => v.id === book.type)?.name}}</el-tag></div>
-      <span v-if="book.status === 0"><el-tag type="warning">无正文</el-tag></span>
-      <span v-if="book.status === 2"><el-tag type="warning">待确认</el-tag></span>
-      <div>{{ book.problem }}</div>
-    </div>
-    <div class="imgContent">
-      <img class="img" v-if="book.img" :src="book.img + '?x-oss-process=image/resize,w_300,quality,q_60'" />
-    </div>
-    <div class="tools">
-      <el-button size="small" :type="book.img ? 'default' : 'primary'" @click.stop="editImgShow(book)">
-        {{ book.img ? '重新生成封皮' : '生成封皮' }}</el-button>
-      <div style="flex-grow: 1"></div>
-      <el-button size="small" type="warning" @click.stop="deleteBook(book)">
-        删除</el-button>
+  <div class="bookList">
+    <div class="book" @click="turnDetail(book.id)" v-for="book in bookList" :key="book.id">
+      <div class="info">
+        <div>{{ book.name }}</div>
+        <!-- <div v-if="book.type"><el-tag>{{typeList.find(v => v.id === book.type)?.name}}</el-tag></div> -->
+        <!-- <span v-if="book.status === 0"><el-tag type="warning">无正文</el-tag></span>
+        <span v-if="book.status === 2"><el-tag type="warning">待确认</el-tag></span> -->
+        <!-- <div>{{ book.problem }}</div> -->
+      </div>
+      <div class="imgContent">
+        <img class="img" v-if="book.img" :src="book.img + '?x-oss-process=image/resize,w_300,quality,q_60'" />
+      </div>
+      <div class="tools">
+        <el-button size="small" :type="book.img ? 'default' : 'primary'" @click.stop="editImgShow(book)">
+          {{ book.img ? '重新生成封皮' : '生成封皮' }}</el-button>
+        <div style="flex-grow: 1"></div>
+        <el-button size="small" type="warning" @click.stop="deleteBook(book)">
+          删除</el-button>
+      </div>
     </div>
   </div>
-  <el-dialog v-model="insertVisible" @close="createClose" title="新增图书" width="80%">
+  <el-dialog v-model="insertVisible" @close="createClose" title="新增专题" width="80%">
     <el-form :model="form" v-if="createStep === 0">
       <el-form-item required label="写这本书的人的特点">
         <el-input v-model="form.system" placeholder="例如：精通儿童辅食制作" />
@@ -98,11 +99,11 @@
           </div>
         </div>
         <el-button @click="createBook" :loading="createCateJSONLoading || creteLoading"
-          :disabled="createCateAnswerLoading || createCateJSON.length === 0">创建图书</el-button>
+          :disabled="createCateAnswerLoading || createCateJSON.length === 0">创建专题</el-button>
       </div>
     </div>
   </el-dialog>
-  <el-dialog v-model="editImgIsShow" title="图片编辑" width="80%">
+  <el-dialog v-model="editImgIsShow" title="封皮编辑" width="80%">
     <div class="createImgStep">
       <div class="title">选择主题和风格</div>
       <div v-html="createImgStep1Answer.replace(/\n/g, '<br/>')"></div>
@@ -135,9 +136,10 @@
       <div class="title">绘图</div>
       <div>
         <div v-if="createImging">生成图片中</div>
+        <div v-else-if="saveImg">保存中</div>
         <img :src="createImgUrl" style="width: 400px;">
-        <el-button v-if="createImgUrl" type="primary" @click="saveCreateImg"
-          :disabled="createImging || !createImgUrl">保存</el-button>
+        <el-button v-if="createImgUrl" type="primary" @click="saveCreateImg" :disabled="createImging || !createImgUrl"
+          :loading="saveImg">{{ saveImg ? '保存中' : '保存' }}</el-button>
       </div>
     </div>
   </el-dialog>
@@ -152,13 +154,11 @@
   </el-dialog>
 </template>
 <script setup lang="ts">
-import { ref, reactive, onActivated, onMounted } from 'vue';
-import { ElMessage, ElTabs, ElTabPane, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElRadioGroup, ElRadio, ElOption, ElIcon, ElMessageBox } from 'element-plus';
+import { ref, reactive, onMounted } from 'vue';
+import { ElMessage, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElRadioGroup, ElRadio, ElOption, ElIcon, ElMessageBox } from 'element-plus';
 import { Delete, get, post, put } from '@/plugins/request'
 import router from '@/router/index';
 import Session from '@/plugins/session';
-import CompanyHistory from './book/companyHistory.vue';
-import PeopleHistory from './book/peopleHistory.vue';
 import json1 from '@/plugins/json1';
 import demo1 from '@/plugins/demo1';
 import cateDemo from '@/plugins/cateDemo';
@@ -181,9 +181,6 @@ type CateItem = {
   contentId?: number[],
 }
 type ICateType = 1 | 2;// 1树状结构，常用于知识。2线性结构，故事/编年体
-const activeTab = ref<string>('0');
-const page = ref<number>(1);
-const pageSize = ref<number>(10);
 const insertVisible = ref<boolean>(false)
 const insertStrategy = ref<string>('');
 const form = reactive<{
@@ -209,18 +206,6 @@ const creteLoading = ref<boolean>(false);
 // const createBookIng = ref<boolean>(false)
 const createChatDom = ref()
 
-// 根据书名创建
-const insertByNameVisible = ref<boolean>(false)
-const formByName = reactive<{
-  system: string,
-  bookProblem: string,
-  cateType: ICateType,
-}>({
-  system: '精通儿童辅食制作',// 你是一个精通html、css和jsPDF三方包使用的专家
-  bookProblem: '制作营养丰富的儿童辅食',// jsPDF包如何使用
-  cateType: 1,// 1树状结构，常用于知识。2线性结构，故事/编年体
-})
-
 const allStyle: {
   [key: string]: string,
 } = {
@@ -240,6 +225,7 @@ const createImgBook = ref<IBook>()
 const createImgStep1Answer = ref<string>('')
 const createImgUrl = ref<string>()
 const createImging = ref<boolean>(false)
+const saveImg = ref<boolean>(false)
 const createImgStep1StyleSelect = ref<keyof typeof allStyle>();// 第一步待选择的主题
 const createImgStep1Colors = ref<string[]>();// 第一步待选择的颜色列表
 const createImgStep1ColorsSelect = ref<string>();// 第一步待选择的颜色列表
@@ -255,7 +241,6 @@ const typeList = ref<Array<{
 const bookCount = ref<number>(-1)
 const bookList = ref<IBook[]>([])
 const bookListLoading = ref<boolean>(false)
-const typeAIRecloading = ref<boolean>(false)
 
 // 对抗网络
 const twoChatShow = ref<boolean>(false)
@@ -329,8 +314,6 @@ async function begin() {
     if (createChatDom.value) {
       createChatDom.value.scrollTop += 3000
     }
-  }, {
-    model: 'ernie-3.5-128k'
   })
   createCateAnswerLoading.value = false
 }
@@ -356,8 +339,6 @@ async function createCate() {
       if (createChatDom.value) {
         createChatDom.value.scrollTop += 3000
       }
-    }, {
-      model: 'ernie-3.5-128k'
     })
     createCateAnswerList.value.push('');
     createCateAnswerList.value[createCateAnswerList.value.length - 1] = await session.chat(`根据你说的比例，重新调整一下。占比较多的多划分一些子章节。占比较少的，少划分子章节。不要索引。`, (res) => {
@@ -365,8 +346,6 @@ async function createCate() {
       if (createChatDom.value) {
         createChatDom.value.scrollTop += 3000
       }
-    }, {
-      model: 'ernie-3.5-128k'
     })
   }
   const createCatePrompt: string = (() => {
@@ -427,7 +406,8 @@ async function createBook() {
   "name": "书名",
   "desc": "短描述",
 }
-\`\`\``, () => { }, {
+\`\`\``, () => {
+  }, {
     isJSON: true,
     isSessionEnd: true,
   })
@@ -488,11 +468,7 @@ async function editImgShow(book: IBook) {
   sessionImg = new Session(book.createUserSystem)
   await chatCreateImg()
 }
-async function initInsertByName() {
-  insertByNameVisible.value = true;
-  formByName.bookProblem = ''
-  formByName.system = ''
-}
+
 async function chatCreateImg() {
   if (!createImgBook.value) {
     return;
@@ -640,26 +616,27 @@ async function saveCreateImg() {
   }
 
   const formData = new FormData()
+  saveImg.value = true
   formData.append('file', base64ToBlob(createImgUrl.value))
   const data = await post('/oss', formData)
-  console.log('ddddd', data)
-  const { result, url } = data;
+  const { url } = data;
   if (url) {
     console.log('ddddd-2', data)
     editImgIsShow.value = false;
     await put(`/setBookImg/${createImgBook.value.id}`, {
       img: url,
     })
+    saveImg.value = false
     initBookList()
   }
 }
 function deleteBook(book: IBook) {
-  ElMessageBox.confirm('是否删除' + book.id + ':' + book.name, {
+  ElMessageBox.confirm('是否删除:' + book.name, {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning',
   }).then(async () => {
-    await Delete(`/admin/dbBase/tableCommonDetail/book/book/${book.id}`)
+    await Delete(`/deleteBook/${book.id}`)
     initBookList()
   }).catch(() => {
     // 用户取消删除
@@ -670,31 +647,6 @@ function createClose() {
   createCateQuestion.value = ''
   createCateAnswerList.value = [];
   createCateJSON.value = []
-}
-
-async function insertInit(cateType: ICateType, type: number, system: string, bookProblem: string, message: string, strategy: string) {
-  console.log('insertInit', cateType, system, message, strategy)
-  form.system = system;
-  form.bookProblem = bookProblem;
-  form.cateType = cateType;
-  form.type = type;
-  insertVisible.value = true
-  insertStrategy.value = strategy;
-  createStep.value = 1;
-  createCateAnswerList.value = []
-  createCateAnswerLoading.value = true
-  session = new Session(system)
-  console.log(form)
-  createCateAnswerList.value.push('');
-  createCateAnswerList.value[createCateAnswerList.value.length - 1] = await session.chat(message, (res) => {
-    createCateAnswerList.value[createCateAnswerList.value.length - 1] += res;
-    if (createChatDom.value) {
-      createChatDom.value.scrollTop += 3000
-    }
-  }, {
-    model: 'ernie-3.5-128k'
-  })
-  createCateAnswerLoading.value = false
 }
 </script>
 <style lang="less" scoped>
@@ -875,6 +827,58 @@ async function insertInit(cateType: ICateType, type: number, system: string, boo
 
     &.active {
       border: solid 2px black;
+    }
+  }
+}
+
+.bookList {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 12px;
+  height: calc(100vh - 64px);
+  overflow: auto;
+  gap: 12px;
+
+  .bookTabs {
+    width: 100%;
+  }
+
+  .book {
+    width: 250px;
+    height: 373px;
+    border: solid 1px #aaa;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
+    .imgContent {
+      min-height: 266px;
+      width: 250px;
+      height: 333px;
+      background-color: #c8c8c8;
+    }
+
+    .info {
+      position: absolute;
+      width: 90%;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 8px;
+      box-sizing: border-box;
+      top: 30px;
+      left: 5%;
+    }
+
+    .img {
+      width: 100%;
+    }
+
+    .tools {
+      display: flex;
+      padding: 8px;
     }
   }
 }

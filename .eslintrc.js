@@ -22,6 +22,7 @@ module.exports = {
     '@typescript-eslint/no-inferrable-types': 0,
     'vue/no-use-v-if-with-v-for': 0,
     'vue/no-reserved-component-names': 0,
+    '@typescript-eslint/no-empty-function': 0,
   },
   parserOptions: {
     ecmaVersion: 2020

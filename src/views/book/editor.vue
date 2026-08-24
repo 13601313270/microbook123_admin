@@ -130,7 +130,6 @@
         <div class="customTools">
           <el-button-group size="small">
             <el-button @click="showCreateNewContent(contentItem)">优化</el-button>
-            <!-- <el-button @click="aiInsert(contentItem)">AI插入</el-button> -->
             <el-button @click="splitContentToCat(contentItem, true)">拆分到父级</el-button>
             <el-button @click="splitContentToCat(contentItem, false)">拆分成子级</el-button>
             <el-button @click="showCreateNewImg(contentItem)">插图</el-button>
@@ -169,14 +168,8 @@
     <!-- <div>对比</div> -->
     <div style="display: flex;">
       <el-input :disabled="newContentLoading" v-model="newContentInput" placeholder="输入告知AI的改进建议" />
-      <el-button @click="getNewContent('ernie-speed-128k')" :disabled="newContentInput === ''"
+      <el-button @click="getNewContent()" :disabled="newContentInput === ''"
         :loading="newContentLoading" style="margin-left: 4px;" type="primary">生成</el-button>
-      <el-button @click="getNewContent('ernie-3.5-128k')" :disabled="newContentInput === ''"
-        :loading="newContentLoading" style="margin-left: 4px;" type="primary">高级生成</el-button>
-    </div>
-    <div style="margin-top: 8px;">
-      <el-button size="small" @click="newContentInput = '扩写50%篇幅', getNewContent('ernie-speed-128k')">扩写50%</el-button>
-      <el-button size="small" @click="findError()">纠错</el-button>
     </div>
     <div class="contentDiff">
       <div class="contentDiffItem">
@@ -206,7 +199,7 @@
 </template>
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElButtonGroup, ElButton, ElInput, ElDropdown, ElDropdownMenu, ElDropdownItem, ElDialog } from 'element-plus'
 import jsPDF from 'jspdf';
 
 import Session from '@/plugins/session';
@@ -214,7 +207,7 @@ import { useRoute } from 'vue-router';
 import router from '@/router/index'
 import { get, post, put, Delete } from '@/plugins/request'
 import modifyStr from './modifyStr';
-import { costConfig, ModelEnum } from '@/plugins/wenxinyiyanConfig';
+import { ModelEnum } from '@/plugins/wenxinyiyanConfig';
 
 type CateItem = {
   title: string,
@@ -283,7 +276,7 @@ onMounted(() => {
 
 async function initBookCate() {
   lockPage.value = true
-  const info = await get('/admin/dbBase/tableCommonDetail/book/book/' + bookId.value)
+  const info = await get(`/bookInfo/${bookId.value}`)
   const cateObj = JSON.parse(info.cateJSON);
   bookInfo.value = info;
   cateJSON.value = cateObj;
@@ -314,9 +307,7 @@ async function getAllLength() {
   })
   const allLength: {
     [key in number]: number;
-  } = allContId.length ? await get('/book/getAllLength', {
-    contentIds: allContId,
-  }) : []
+  } = allContId.length ? await get('/bookAllLength/' + bookId.value) : []
   cateJSON.value.forEach(v => {
     if (v.contentId) {
       let length = 0;
@@ -361,7 +352,7 @@ async function changeChooseCate(item: CateItem, val: string[]) {
     try {
       const contentList: {
         [key in number]: Content
-      } = await get('/book/getContentByIds', {
+      } = await get('/getContentByIds', {
         contentIds: item.contentId
       })
       showContentLoading.value = false;
@@ -458,7 +449,9 @@ ${bookInfo.value.cateType === 1 ? `
 `}
 \`\`\`
 "`
-  const { id, completion_tokens, prompt_tokens, zip50_completion_tokens, zip50_prompt_tokens } = await post('/book/content/create', {
+  const { id } = await post('/bookContent/create', {
+    bookId: bookId.value,
+    chooseCate: chooseCate.value,
     model,
     searchPropty,
     system: bookInfo.value.createUserSystem,
@@ -466,14 +459,6 @@ ${bookInfo.value.cateType === 1 ? `
     createContentLoading.value = false
     ElMessage.error(e);
   });
-  (async () => {
-    const { default: calcNumber } = await import('calc-number');
-    const cost = costConfig[model];
-    const cost35 = costConfig['ernie-3.5-128k'];
-    const zipCost = `(${zip50_prompt_tokens} * ${cost35.prompt}) + (${zip50_completion_tokens} * ${cost35.completion})`
-    const runStr = `(${prompt_tokens} * ${cost.prompt} + ${completion_tokens} * ${cost.completion} + ${zipCost})/1000`;
-    ElMessage.info('费用：' + calcNumber(runStr))
-  })()
   if (id > 0) {
     if (!find.contentId) {
       find.contentId = [+id]
@@ -483,14 +468,14 @@ ${bookInfo.value.cateType === 1 ? `
     if (!find.desc) {
       const contentList: {
         [key in number]: Content
-      } = await get('/book/getContentByIds', {
+      } = await get('/getContentByIds', {
         contentIds: [id]
       })
       find.desc = contentList[id].zipDesc50
     }
-    await post('/book/bookUpdate/' + bookId.value, {
-      cateJSON: cateJSON.value,
-    })
+    // await post('/book/bookUpdate/' + bookId.value, {
+    //   cateJSON: cateJSON.value,
+    // })
     if (chooseCateInfo.value) {
       await changeChooseCate(chooseCateInfo.value, chooseCate.value)
     }
@@ -567,7 +552,7 @@ function showCreateNewContent(content: Content) {
   newContentVisible.value = true
   newContentOldContent.value = content
 }
-async function getNewContent(model: ModelEnum) {
+async function getNewContent() {
   newContentNewContent.value = ''
   if (chooseCate.value.length === 0 || !bookInfo.value || newContentInput.value === '') {
     return
@@ -587,8 +572,8 @@ async function getNewContent(model: ModelEnum) {
 ## 原有内容
 \`\`\`markdown
 ${newContentOldContent.value.content}
-\`\`\``, () => { }, {
-    model,
+\`\`\``, () => {
+    console.log(1)
   })
   console.log('result1', result1)
   let promptSession = '';
@@ -614,8 +599,6 @@ ${newContentOldContent.value.content}
   newContentNewContent.value = '';
   newContentNewContent.value = await session.chat(promptSession, (res) => {
     newContentNewContent.value += res
-  }, {
-    model,
   })
   newContentVisible.value = true;
   newContentLoading.value = false;
@@ -637,7 +620,8 @@ async function deleteContent() {
     chooseCateInfo.value.contentId = [];
     chooseCateInfo.value.length = 0;
     showContent.value = []
-  }).catch(() => {
+  }).catch((e) => {
+    console.log(e)
   })
 }
 async function findError() {
@@ -670,7 +654,7 @@ async function getNewContentImg() {
     console.log(chooseCateInfo)
     let receiveMsg = newImgContent.value?.content;
     receiveMsg = await session.chat(`帮我把以下这么一段文字浓缩成一个可以30字以内的短描述，文字如下：
-    ${receiveMsg}`, () => { })
+    ${receiveMsg}`)
     console.log(receiveMsg)
     receiveMsg = chooseCateInfo.value.title + ' ' + receiveMsg;
     const baiduUrl = 'https://image.baidu.com/search/acjson?tn=resultjson_com&word=' + encodeURIComponent(receiveMsg)
@@ -678,6 +662,7 @@ async function getNewContentImg() {
     const urls = json.data.map((v: any) => v.hoverURL);
     baiduImgList.value = urls;
   } catch (e) {
+    console.log(e)
   }
 }
 async function addImgToContent(url: string) {
@@ -724,12 +709,12 @@ ${content.content}
 \`\`\`
 `)
   lockPage.value = false;
-  const match = json.match(/```json([\S|\s]+)\`\`\`/) as RegExpMatchArray;
+  const match = json.match(/```json([\S|\s]+)```/) as RegExpMatchArray;
   if (!match) {
     return;
   }
   console.log(match[1]);
-  let children = JSON.parse(match[1]);
+  const children = JSON.parse(match[1]);
   const splitCateList: CateItem[] = children.map((v: any) => {
     return {
       title: v.title,
@@ -844,7 +829,7 @@ async function saveBook() {
       v.length = undefined;
     }
   })
-  const result = await put('/admin/dbBase/tableCommonDetail/book/book/' + bookId.value, {
+  const result = await put(`/bookInfo/${bookId.value}`, {
     data: {
       cateJSON: JSON.stringify(cateJSON.value)
     }
@@ -897,9 +882,7 @@ async function exportBook(isUpload: boolean) {
     const marginLeft = 20;
     const marginRight = 20;
     return {
-      drawLine: async function (strContent: string, x: number, fontSize: number, options?: {
-        modify: boolean,
-      }) {
+      drawLine: async function (strContent: string, x: number, fontSize: number) {
         // fontSize正文的时候一般建议传10
         const lineHeight = fontSize * 0.7;
         doc.setFontSize(fontSize);
@@ -915,7 +898,7 @@ async function exportBook(isUpload: boolean) {
           // console.log('===wordList===', wordList);
           let maxFontSize = 10;
           for (let j = 0; j < wordList.length; j++) {
-            let { word, style } = wordList[j];
+            const { word, style } = wordList[j];
             if (style.includes('img')) {
               const { width, height } = await (new Promise<{
                 width: number,
@@ -1127,11 +1110,11 @@ async function exportBook(isUpload: boolean) {
     })
     const contentList: {
       [key in number]: Content
-    } = await get('/book/getContentByIds', {
+    } = await get('/getContentByIds', {
       contentIds: allContId
     })
     const { drawLine, getY, getBottomY, getPage, addY, turnNewPage } = Content(0, doc);
-    let contIndex = 0;
+    // let contIndex = 0;
     // drawLine('This is my first time to be here. I’m a little nervous.This is my first time to be here. I’m a little nervous.This is my first time to be here. I’m a little nervous.This is my first time to be here. I’m a little nervous.', 0, 20);
     //     drawLine(`### Title2
     // description
@@ -1161,10 +1144,8 @@ async function exportBook(isUpload: boolean) {
           if (contentList[id] === undefined) {// 前期调试问题方便，稳定后可以删除
             debugger
           }
-          await drawLine(contentList[id].content, 0, 10, {
-            modify: true,
-          });
-          contIndex++;
+          await drawLine(contentList[id].content, 0, 10);
+          // contIndex++;
         }
       }
       if (v.children) {
@@ -1189,14 +1170,12 @@ async function exportBook(isUpload: boolean) {
                 ElMessage.error('存在失效的文章id，对应标题【' + vv.title + '】')
                 return;
               }
-              await drawLine(contentList[id].content, 0, 10, {
-                modify: true,
-              }).catch(e => {
+              await drawLine(contentList[id].content, 0, 10).catch(e => {
                 ElMessage.error(e)
                 exporting.value = false;
                 return;
               });
-              contIndex++;
+              // contIndex++;
             }
           }
           if (vv.children) {
@@ -1217,10 +1196,8 @@ async function exportBook(isUpload: boolean) {
               if (vvv.contentId) {
                 for (let kk = 0; kk < vvv.contentId.length; kk++) {
                   const id = vvv.contentId[kk]
-                  await drawLine(contentList[id].content, 0, 10, {
-                    modify: true,
-                  });
-                  contIndex++;
+                  await drawLine(contentList[id].content, 0, 10);
+                  // contIndex++;
                 }
               }
             }
@@ -1296,7 +1273,7 @@ async function exportBook(isUpload: boolean) {
       doc.addPage();
     }
     doc.addPage();
-    const { drawLine, getY, getBottomY, getPage, addY, turnNewPage } = Content(0, doc);
+    const { drawLine, getBottomY, addY } = Content(0, doc);
     doc.setFontSize(13);
     doc.text('电脑端可在浏览器访问如下网址，阅读本专栏', pageWidth / 2, 20, {
       align: 'center',
@@ -1340,7 +1317,7 @@ async function exportBook(isUpload: boolean) {
       const res = await post('/microbook/uploadFile', formData)
       console.log(res)
       if (res.result === true) {
-        const saveRes = await put('/admin/dbBase/tableCommonDetail/book/book/' + bookId.value, {
+        const saveRes = await put(`/bookInfo/${bookId.value}`, {
           data: {
             downUrl: res.url,
             status: 1,
@@ -1436,9 +1413,10 @@ async function createCatJSON() {
 \`\`\`
 ## 格式要求
 返回json结构的title，不要加自增的序列，例如：“第一章：XXX”、“一、”、“1.”。title就直接是章节名。
-json结构不要添加children层，只返回${addCate1ChildCateEditCat.value.join('/')}下一层目录。`, (res) => {
-    addCate1ChildCateAnswerJSON.value += res;
-  })
+json结构不要添加children层，只返回${addCate1ChildCateEditCat.value.join('/')}下一层目录。`,
+    (res) => {
+      addCate1ChildCateAnswerJSON.value += res;
+    })
   console.log(addCate1ChildCateAnswerJSON.value);
   addCate1ChildCateLoading.value = false;
   addCate1ChildCateInput.value = '';
@@ -1448,7 +1426,7 @@ async function useAnswerJSON() {
     return;
   }
   console.log(addCate1ChildCateAnswerJSON.value);
-  const match = addCate1ChildCateAnswerJSON.value.match(/```json([\S|\s]+)\`\`\`/);
+  const match = addCate1ChildCateAnswerJSON.value.match(/```json([\S|\s]+)```/);
   if (match) {
     let children = JSON.parse(match[1]);
     if (children.length === 1 && children.children && children.children.length) {
@@ -1511,16 +1489,13 @@ function textSelect(event: any) {
     newContentOldSelectText.value = ''
   }
 }
-function aiInsert() {
-
-}
 function showMsgNotification(title: string, msg: string) {
   // @ts-ignore
-  var Notification = window.Notification || window.mozNotification || window.webkitNotification;
+  const Notification = window.Notification || window.mozNotification || window.webkitNotification;
   if (Notification) { //支持桌面通知
     if (Notification.permission == "granted") {
       //已经允许通知                        
-      var instance = new Notification(title, {
+      const instance = new Notification(title, {
         body: msg,
         icon: "https://www.haolizi.net/skin/images/150x50_logo.png",
       });
@@ -1540,7 +1515,7 @@ function showMsgNotification(title: string, msg: string) {
       Notification.requestPermission(function (status) {
         if (status === "granted") {
           //用户允许                                
-          var instance = new Notification(title, {
+          const instance = new Notification(title, {
             body: msg,
             icon: "images/reload.png"
           }); instance.onclick = function () {
@@ -1574,10 +1549,16 @@ async function pushBaidu() {
 }
 </script>
 <style lang="less" scoped>
-@import "../basic.less";
-
 .nav {
-  .navTools;
+  position: fixed;
+  top: 0;
+  z-index: 1000;
+  // left: @navSaveLeftWidth;
+  right: 120px;
+  padding: 0 5px;
+  height: 40px;
+  display: flex;
+  align-items: center;
 }
 
 .edit {

@@ -2,18 +2,16 @@
   <div class="edit">
     <div class="nav">
       <el-button-group v-if="bookInfo">
-        <el-button size="small" :disabled="lockPage || cateJSON.length === 0" @click="saveBook">保存目录</el-button>
+        <!-- <el-button size="small" :disabled="lockPage || cateJSON.length === 0" @click="saveBook">保存目录</el-button> -->
         <el-button size="small" :disabled="lockPage || cateJSON.length === 0" :loading="lockPage"
-          @click="createAllContent('ernie-speed-128k')">补充正文</el-button>
-        <el-button size="small" :disabled="lockPage || cateJSON.length === 0" :loading="lockPage"
-          @click="createAllContent('ernie-3.5-128k')">补充正文（高级）</el-button>
-        <el-button v-if="bookInfo.downUrl" size="small" :disabled="lockPage || cateJSON.length === 0"
+          @click="createAllContent()">补充正文</el-button>
+        <!-- <el-button v-if="bookInfo.downUrl" size="small" :disabled="lockPage || cateJSON.length === 0"
           @click="exportBook(true)" :loading="exporting">重新生成PDF</el-button>
         <el-button v-else size="small" :disabled="lockPage || cateJSON.length === 0" @click="exportBook(true)"
           :loading="exporting" type="danger">生成PDF并上线</el-button>
         <el-button size="small" :disabled="lockPage || cateJSON.length === 0" @click="exportBook(false)"
           :loading="exporting">导出</el-button>
-        <el-button size="small" :disabled="lockPage || cateJSON.length === 0" @click="pushBaidu">push百度</el-button>
+        <el-button size="small" :disabled="lockPage || cateJSON.length === 0" @click="pushBaidu">push百度</el-button> -->
       </el-button-group>
     </div>
     <div class="left">
@@ -104,37 +102,21 @@
         <div v-else style="display: flex;align-items: center;justify-content: center;flex-direction: column;">
           <div>创建目录后，未生成内容，点击生成进行创建</div>
           <div>
-            <el-button v-loading.fullscreen.lock="createContentLoading && !lockPage"
-              @click="createContent('ernie-speed-128k')" style="width: 350px;margin-top: 12px;"
-              type="primary">生成(免费)</el-button>
-          </div>
-          <div>
-            <el-button v-loading.fullscreen.lock="createContentLoading && !lockPage"
-              @click="createContent('ernie-3.5-128k')" style="width: 350px;margin-top: 12px;">高级生成(收费)输入：0.0008
-              输出：0.002</el-button>
-          </div>
-          <div>
-            <el-button v-loading.fullscreen.lock="createContentLoading && !lockPage"
-              @click="createContent('ernie-4.0-turbo-8k-latest')" style="width: 350px;margin-top: 12px;">究极生成(收费)输入：0.02
-              输出：0.06</el-button>
-          </div>
-          <div>
-            <el-button v-loading.fullscreen.lock="createContentLoading && !lockPage"
-              @click="createContent('ernie-novel-8k')" style="width: 350px;margin-top: 12px;">究极生成小说风格(收费)输入：0.04
-              输出：0.12</el-button>
+            <el-button v-loading.fullscreen.lock="createContentLoading && !lockPage" @click="createContent()"
+              style="width: 350px;margin-top: 12px;" type="primary">AI生成</el-button>
           </div>
         </div>
       </div>
       <!-- {{ chooseCate }} -->
       <div v-for="contentItem in showContent" class="codeItem">
         <div class="customTools">
-          <el-button-group size="small">
+          <!-- <el-button-group size="small">
             <el-button @click="showCreateNewContent(contentItem)">优化</el-button>
             <el-button @click="splitContentToCat(contentItem, true)">拆分到父级</el-button>
             <el-button @click="splitContentToCat(contentItem, false)">拆分成子级</el-button>
             <el-button @click="showCreateNewImg(contentItem)">插图</el-button>
             <el-button type="warning" @click="deleteContent()">删除</el-button>
-          </el-button-group>
+          </el-button-group> -->
           <div style="flex-grow: 1;"></div>
           <div class="contentLength">
             字数{{ contentItem.length }}
@@ -168,8 +150,8 @@
     <!-- <div>对比</div> -->
     <div style="display: flex;">
       <el-input :disabled="newContentLoading" v-model="newContentInput" placeholder="输入告知AI的改进建议" />
-      <el-button @click="getNewContent()" :disabled="newContentInput === ''"
-        :loading="newContentLoading" style="margin-left: 4px;" type="primary">生成</el-button>
+      <el-button @click="getNewContent()" :disabled="newContentInput === ''" :loading="newContentLoading"
+        style="margin-left: 4px;" type="primary">生成</el-button>
     </div>
     <div class="contentDiff">
       <div class="contentDiffItem">
@@ -395,7 +377,7 @@ function findChooseCat() {
   }
   return find;
 }
-async function createContent(model: ModelEnum) {
+async function createContent() {
   if (!bookInfo.value) {
     return
   }
@@ -452,7 +434,6 @@ ${bookInfo.value.cateType === 1 ? `
   const { id } = await post('/bookContent/create', {
     bookId: bookId.value,
     chooseCate: chooseCate.value,
-    model,
     searchPropty,
     system: bookInfo.value.createUserSystem,
   }).catch((e) => {
@@ -489,7 +470,7 @@ ${bookInfo.value.cateType === 1 ? `
     })
   }
 }
-async function createAllContent(model: ModelEnum) {
+async function createAllContent() {
   const startDate = (new Date()).getTime()
   let stepStartDate = startDate;
   function showTime() {
@@ -509,7 +490,7 @@ async function createAllContent(model: ModelEnum) {
       if (!cate1.contentId || cate1.contentId.length === 0) {
         await changeChooseCate(cate1, [cate1.title])
         stepStartDate = (new Date()).getTime();
-        await createContent(model)
+        await createContent()
         showTime()
       }
     } else {
@@ -519,7 +500,7 @@ async function createAllContent(model: ModelEnum) {
           if (!cate2.contentId || cate2.contentId.length === 0) {
             await changeChooseCate(cate2, [cate1.title, cate2.title])
             stepStartDate = (new Date()).getTime();
-            await createContent(model)
+            await createContent()
             showTime()
           }
         } else {
@@ -528,7 +509,7 @@ async function createAllContent(model: ModelEnum) {
             if (!cate3.contentId || cate3.contentId.length === 0) {
               await changeChooseCate(cate3, [cate1.title, cate2.title, cate3.title])
               stepStartDate = (new Date()).getTime();
-              await createContent(model)
+              await createContent()
               showTime()
             }
           }

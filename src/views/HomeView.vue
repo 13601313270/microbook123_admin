@@ -53,53 +53,54 @@
       </el-form-item>
     </el-form>
     <div v-if="createStep === 1" class="chatContent">
-      <div class="chat">
-        <div style="display: flex;">
-          <el-input v-model="createCateQuestion" />
-          <el-button @click="chatBeter" :loading="createCateAnswerLoading"
-            :disabled="createCateJSONLoading">沟通</el-button>
-        </div>
+      <div class="chat" v-if="createCateJSON.length === 0">
         <div ref="createChatDom" class="chatList">
-          <div class="chatItem" v-for="createCateAnswer in createCateAnswerList"
-            v-html="createCateAnswer.replace(/\n/g, '<br/>')"></div>
+          <div class="chatItem" :class="{ user: createCateAnswer.role === 'user' }"
+            v-for="createCateAnswer in createCateAnswerList" v-html="createCateAnswer.text.replace(/\n/g, '<br/>')">
+          </div>
           <span class="createLoading" v-if="createCateAnswerLoading">
             <el-icon>
               <Loading />
             </el-icon>
           </span>
         </div>
+        <div class="chatTools">
+          <el-input v-model="createCateQuestion" />
+          <el-button @click="chatBeter" :loading="createCateAnswerLoading" :disabled="createCateJSONLoading"
+            style="margin-left: 8px;">沟通</el-button>
+          <el-button @click="createCate" :loading="createCateJSONLoading" :disabled="createCateAnswerLoading"
+            style="margin-left: 8px;">完成沟通，下一步</el-button>
+        </div>
       </div>
-      <div class="catList">
-        <el-button @click="createCate" :loading="createCateJSONLoading"
-          :disabled="createCateAnswerLoading">生成</el-button>
-        <div>
+      <div class="cateInfo" v-if="createCateJSON.length > 0">
+        <div class="catList">
           <div v-for="item in createCateJSON" class="cateItem">
-            <div class="head">
-              <el-input class="titleInput" v-model="item.title" />
+            <div class="info">
+              <div class="head">{{ item.title }}</div>
+              <div class="desc">{{ item.desc }}</div>
             </div>
-            <div class="desc">{{ item.desc }}</div>
             <div class="children">
               <div v-for="item2 in item.children" class="cateItem">
-                <div>
-                  <div class="head">
-                    <el-input class="titleInput" v-model="item2.title" />
-                  </div>
+                <div class="info">
+                  <div class="head">{{ item2.title }}</div>
                   <div class="desc">{{ item2.desc }}</div>
                 </div>
                 <div class="children">
                   <div v-for="item3 in item2.children" class="cateItem">
-                    <div class="head">
-                      <el-input class="titleInput" v-model="item3.title" />
+                    <div class="info">
+                      <div class="head">{{ item3.title }}</div>
+                      <div class="desc">{{ item3.desc }}</div>
                     </div>
-                    <div class="desc">{{ item3.desc }}</div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <el-button @click="createBook" :loading="createCateJSONLoading || creteLoading"
-          :disabled="createCateAnswerLoading || createCateJSON.length === 0">创建专题</el-button>
+        <div class="cateAction">
+          <el-button @click="createBook" size="large" type="primary" :loading="createCateJSONLoading || creteLoading"
+            :disabled="createCateAnswerLoading || createCateJSON.length === 0">创建专题</el-button>
+        </div>
       </div>
     </div>
   </el-dialog>
@@ -138,8 +139,10 @@
         <div v-if="createImging">生成图片中</div>
         <div v-else-if="saveImg">保存中</div>
         <img :src="createImgUrl" style="width: 400px;">
-        <el-button v-if="createImgUrl" type="primary" @click="saveCreateImg" :disabled="createImging || !createImgUrl"
-          :loading="saveImg">{{ saveImg ? '保存中' : '保存' }}</el-button>
+      </div>
+      <div>
+        <el-button style="width: 400px;" v-if="createImgUrl" size="large" type="primary" @click="saveCreateImg"
+          :disabled="createImging || !createImgUrl" :loading="saveImg">{{ saveImg ? '保存中' : '保存' }}</el-button>
       </div>
     </div>
   </el-dialog>
@@ -199,7 +202,10 @@ const form = reactive<{
 const createStep = ref<0 | 1 | 2>(0);
 const createCateAnswerLoading = ref<boolean>(false)
 const createCateQuestion = ref<string>('')
-const createCateAnswerList = ref<string[]>([])
+const createCateAnswerList = ref<Array<{
+  text: string,
+  role: 'assistant' | 'user'
+}>>([])
 const createCateJSONLoading = ref<boolean>(false)
 const createCateJSON = ref<CateItem[]>([])
 const creteLoading = ref<boolean>(false);
@@ -307,10 +313,13 @@ async function begin() {
     [1]: `你要考虑这本书都需要讲解什么内容。简短告诉我`,
     [2]: cateDemo,
   }
-  createCateAnswerList.value.push('');
+  createCateAnswerList.value.push({
+    text: '',
+    role: 'assistant'
+  });
   // 你可以参考这个网址中[${form.outUrl}]中外部资料作为常识。
-  createCateAnswerList.value[createCateAnswerList.value.length - 1] = await session.chat(`我们一起合作要写一本名讲述${form.bookProblem}的书。${cateDescMap[form.cateType]}`, (res) => {
-    createCateAnswerList.value[createCateAnswerList.value.length - 1] += res;
+  createCateAnswerList.value[createCateAnswerList.value.length - 1].text = await session.chat(`我们一起合作要写一本名讲述${form.bookProblem}的书。${cateDescMap[form.cateType]}`, (res) => {
+    createCateAnswerList.value[createCateAnswerList.value.length - 1].text += res;
     if (createChatDom.value) {
       createChatDom.value.scrollTop += 3000
     }
@@ -318,10 +327,17 @@ async function begin() {
   createCateAnswerLoading.value = false
 }
 async function chatBeter() {
+  createCateAnswerList.value.push({
+    text: createCateQuestion.value,
+    role: 'user'
+  });
   createCateAnswerLoading.value = true
-  createCateAnswerList.value.push('');
-  createCateAnswerList.value[createCateAnswerList.value.length - 1] = await session.chat('我希望对你生成的目录进行一些改进，' + createCateQuestion.value, (res) => {
-    createCateAnswerList.value[createCateAnswerList.value.length - 1] += res;
+  createCateAnswerList.value.push({
+    text: '',
+    role: 'assistant'
+  });
+  createCateAnswerList.value[createCateAnswerList.value.length - 1].text = await session.chat(createCateQuestion.value, (res) => {
+    createCateAnswerList.value[createCateAnswerList.value.length - 1].text += res;
     if (createChatDom.value) {
       createChatDom.value.scrollTop += 3000
     }
@@ -333,16 +349,22 @@ async function createCate() {
   createCateJSONLoading.value = true;
   let json = ''
   if (form.cateType === 1) {
-    createCateAnswerList.value.push('');
-    createCateAnswerList.value[createCateAnswerList.value.length - 1] = await session.chat(`这些章节内容比例大概是什么样的？`, (res) => {
-      createCateAnswerList.value[createCateAnswerList.value.length - 1] += res;
+    createCateAnswerList.value.push({
+      text: '',
+      role: 'assistant'
+    });
+    createCateAnswerList.value[createCateAnswerList.value.length - 1].text = await session.chat(`这些章节内容比例大概是什么样的？`, (res) => {
+      createCateAnswerList.value[createCateAnswerList.value.length - 1].text += res;
       if (createChatDom.value) {
         createChatDom.value.scrollTop += 3000
       }
     })
-    createCateAnswerList.value.push('');
-    createCateAnswerList.value[createCateAnswerList.value.length - 1] = await session.chat(`根据你说的比例，重新调整一下。占比较多的多划分一些子章节。占比较少的，少划分子章节。不要索引。`, (res) => {
-      createCateAnswerList.value[createCateAnswerList.value.length - 1] += res;
+    createCateAnswerList.value.push({
+      text: '',
+      role: 'assistant'
+    });
+    createCateAnswerList.value[createCateAnswerList.value.length - 1].text = await session.chat(`根据你说的比例，重新调整一下。占比较多的多划分一些子章节。占比较少的，少划分子章节。不要索引。`, (res) => {
+      createCateAnswerList.value[createCateAnswerList.value.length - 1].text += res;
       if (createChatDom.value) {
         createChatDom.value.scrollTop += 3000
       }
@@ -664,8 +686,6 @@ function createClose() {
     flex-grow: 1;
     height: 100%;
     overflow-y: hidden;
-    border-right: solid 1px #d8d8d8;
-    padding-right: 10px;
     margin-right: 10px;
     display: flex;
     flex-direction: column;
@@ -673,16 +693,30 @@ function createClose() {
     .chatList {
       margin-top: 8px;
       overflow-y: auto;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: start;
+      gap: 8px;
+
+      .chatItem {
+        border: solid 1px #333;
+        border-radius: 4px;
+        padding: 8px;
+        max-width: 86%;
+
+        &.user {
+          align-self: end;
+          background: #95ec69;
+          color: black;
+          border: none;
+        }
+      }
     }
 
-    .chatItem {
-      border: solid 1px #333;
-      border-radius: 4px;
-      padding: 4px;
-
-      &:not(:first-child) {
-        margin-top: 4px;
-      }
+    .chatTools {
+      display: flex;
+      margin-top: 8px;
     }
 
     .createLoading {
@@ -690,55 +724,54 @@ function createClose() {
     }
   }
 
-  .catList {
-    max-width: 400px;
-    min-width: 300px;
+  .cateInfo {
+    width: 100%;
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 
-    .cateItem {
-      border: solid 1px rgb(95, 95, 95);
-      border-radius: 4px;
-      padding: 8px;
-      cursor: pointer;
-      margin: 4px 0;
+    .catList {
+      flex-grow: 1;
+      overflow-y: auto;
 
-      .head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+      .cateItem {
+        border: solid 1px #bfbfbf;
+        border-radius: 4px;
+        padding: 8px;
+        cursor: pointer;
+        margin: 8px 0;
 
-        .titleInput {
-          background-color: transparent;
+        .info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
 
-          :deep(.el-input__wrapper) {
-            background-color: transparent;
-            box-shadow: none;
+          .head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
+          }
 
-            &.is-focus {
-              background-color: white !important;
-              box-shadow: 0 0 0 1px var(--el-input-border-color, var(--el-border-color)) inset !important;
-
-              .el-input__inner {
-                color: black !important;
-              }
-            }
+          .desc {
+            color: #999;
+            font-size: 14px;
           }
         }
 
-        .tools {
-          flex-shrink: 0;
+        .children {
+          margin-left: 16px;
         }
       }
+    }
 
-      .desc {
-        color: #999;
-        font-size: 12px;
-      }
-
-      .children {
-        margin-left: 16px;
-      }
+    .cateAction {
+      padding-top: 8px;
+      border-top: solid 1px #cccccc;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
     }
   }
 }

@@ -104,7 +104,7 @@
       </div>
     </div>
   </el-dialog>
-  <el-dialog v-model="editImgIsShow" title="封皮编辑" width="80%">
+  <el-dialog v-model="editImgIsShow" title="封皮生成" width="80%">
     <div class="createImgStep">
       <div class="title">选择主题和风格</div>
       <div v-html="createImgStep1Answer.replace(/\n/g, '<br/>')"></div>

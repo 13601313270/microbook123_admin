@@ -119,9 +119,7 @@ class Session {
           json = JSON.parse(jsonStr)
         } catch (e) {
           console.error(e);
-          debugger
           json = eval(`(${jsonStr})`)
-          debugger
         }
         lastUsage = json.usage;
         returnStr += json.result

@@ -887,7 +887,7 @@ async function exportBook(isUpload: boolean) {
         const lineHeight = fontSize * 0.7;
         doc.setFontSize(fontSize);
         if (strContent === undefined) {// 前期调试问题方便，稳定后可以删除
-          debugger
+          // debugger
         }
         const strArr = strContent.split('\n');
         for (let j = 0; j < strArr.length; j++) {
@@ -1142,7 +1142,7 @@ async function exportBook(isUpload: boolean) {
         for (let j = 0; j < v.contentId.length; j++) {
           const id = v.contentId[j]
           if (contentList[id] === undefined) {// 前期调试问题方便，稳定后可以删除
-            debugger
+            // debugger
           }
           await drawLine(contentList[id].content, 0, 10);
           // contIndex++;
@@ -1537,7 +1537,7 @@ function showMsgNotification(title: string, msg: string) {
       });
     }
   } else {
-    debugger
+    // debugger
   }
 }
 async function pushBaidu() {

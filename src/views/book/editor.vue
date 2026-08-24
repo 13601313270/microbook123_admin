@@ -3,8 +3,8 @@
     <div class="nav">
       <el-button-group v-if="bookInfo">
         <!-- <el-button size="small" :disabled="lockPage || cateJSON.length === 0" @click="saveBook">保存目录</el-button> -->
-        <el-button size="small" :disabled="lockPage || cateJSON.length === 0" :loading="lockPage"
-          @click="createAllContent()">补充正文</el-button>
+        <el-button size="large" type="primary" :disabled="lockPage || cateJSON.length === 0" :loading="lockPage"
+          @click="createAllContent()">批量补充正文</el-button>
         <!-- <el-button v-if="bookInfo.downUrl" size="small" :disabled="lockPage || cateJSON.length === 0"
           @click="exportBook(true)" :loading="exporting">重新生成PDF</el-button>
         <el-button v-else size="small" :disabled="lockPage || cateJSON.length === 0" @click="exportBook(true)"
@@ -16,7 +16,9 @@
     </div>
     <div class="left">
       <div v-if="bookInfo" class="bookInfo">
-        <el-button size="small" @click="router.back()">&lt;</el-button>
+        <div class="back" @click="router.back()">
+          <img src="@/assets/back.svg" />
+        </div>
         <div class="name">{{ bookInfo.name }}</div>
         <div class="length" v-if="allBookLength">{{ allBookLength }}字</div>
         <div style="flex-grow: 1;"></div>
@@ -85,10 +87,10 @@
                 </div>
               </div>
             </div>
-            <el-button-group>
-              <el-button size="small" @click="item.children.push({ title: '', children: [] })">添加</el-button>
-              <!-- <el-button size="small" @click="item.children.push({ title: '', children: [] })">AI添加</el-button> -->
-            </el-button-group>
+            <!-- <el-button-group> -->
+            <!-- <el-button size="small" @click="item.children.push({ title: '', children: [] })">添加</el-button> -->
+            <!-- <el-button size="small" @click="item.children.push({ title: '', children: [] })">AI添加</el-button> -->
+            <!-- </el-button-group> -->
           </div>
         </div>
       </div>
@@ -1532,10 +1534,9 @@ async function pushBaidu() {
 <style lang="less" scoped>
 .nav {
   position: fixed;
-  top: 0;
+  top: 8px;
   z-index: 1000;
-  // left: @navSaveLeftWidth;
-  right: 120px;
+  left: 246px;
   padding: 0 5px;
   height: 40px;
   display: flex;
@@ -1544,7 +1545,7 @@ async function pushBaidu() {
 
 .edit {
   display: flex;
-  height: calc(100vh - 40px);
+  height: 100vh;
   box-sizing: border-box;
   overflow: hidden;
 
@@ -1565,7 +1566,21 @@ async function pushBaidu() {
       flex-direction: row;
       align-items: center;
       margin-top: 4px;
-      height: 32px;
+      height: 52px;
+
+      .back {
+        border: solid 1px #dcdfe6;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+
+        >img {
+          width: 24px;
+        }
+      }
 
       .name {
         font-size: 14px;

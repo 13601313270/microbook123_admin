@@ -672,9 +672,8 @@ function createClose() {
 }
 </script>
 <style lang="less" scoped>
-.page {
-  width: 1050px;
-  margin: 0 auto;
+.nav {
+  padding: 8px;
 }
 
 .chatContent {
@@ -868,7 +867,6 @@ function createClose() {
   display: flex;
   flex-wrap: wrap;
   margin: 12px;
-  height: calc(100vh - 64px);
   overflow: auto;
   gap: 12px;
 
